@@ -132,8 +132,16 @@ tr.det .detbody h4{font-size:16px;margin:16px 0 6px;padding-top:10px}
 .js tr.pinned .marks .pin{color:#b58900;border-color:#b58900}
 .js tr.archived{opacity:.45}
 .js tr.archived .marks .arch{color:var(--ink)}
+.filters .ftoggle,.filters .fdone{display:none}
 .filters .send{font:inherit;font-size:13px;margin-top:14px;padding:6px 10px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink);cursor:pointer}
 @media (max-width:720px){.kv{grid-template-columns:1fr}.panel{padding:20px 18px 40px}.filters .count{margin-left:0}
+  .filters{padding:8px 0}
+  .filters .ftoggle,.filters .fdone{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:15px;font-weight:600;padding:9px 14px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--ink);cursor:pointer}
+  .filters .fdone{width:100%;justify-content:center;background:var(--ink);color:var(--bg);border-color:var(--ink);margin-top:6px}
+  .filters:not(.open) .row>label,.filters:not(.open) .row>.send,.filters:not(.open) .fdone,.filters:not(.open) .areanote{display:none!important}
+  .filters.open{max-height:85vh;overflow-y:auto;box-shadow:var(--shadow)}
+  .filters.open .row>label{width:100%}.filters.open select,.filters.open input[type=search]{width:100%;min-width:0;font-size:16px;padding:9px 10px}
+  .filters .count{padding-top:0;margin-left:auto}
   table{min-width:0;font-size:14px}th,td{padding:8px 8px}
   th:nth-child(5),td:nth-child(5),th:nth-child(6),td:nth-child(6),th:nth-child(8),td:nth-child(8),th:nth-child(9),td:nth-child(9),th:nth-child(10),td:nth-child(10){display:none}
   tr.det td{display:table-cell}
@@ -169,6 +177,7 @@ tr.det .detbody h4{font-size:16px;margin:16px 0 6px;padding-top:10px}
 </div></header>
 
 <div class="filters"><div class="wrap"><div class="row">
+  <button type="button" class="ftoggle" id="ftoggle" aria-expanded="false" aria-controls="filters-row">Filters</button>
   <label>Search <input type="search" id="q" placeholder="name, town, program…"></label>
   <label>Area <select id="area"><option value="9" title="Edgewater, Uptown, Lincoln Square, Ravenswood, Albany Park, Irving Park, Avondale, North Center, North Park, Logan Square, Portage Park, Jefferson Park, Lakeview, Lincoln Park, Rogers Park, West Ridge, Bucktown, Wicker Park, Ukrainian Village, West Town, Humboldt Park, East Garfield Park, West Garfield Park, Austin, West Loop, Near West Side, River North, Loop, South Loop, Pilsen, Little Village, North Lawndale, Chinatown, Bridgeport, McKinley Park">All towns (35)</option><option value="3" title="Edgewater, Uptown, Lincoln Square, Ravenswood, Albany Park, Irving Park, Avondale, North Center, North Park, Logan Square, Portage Park, Jefferson Park, Lakeview, Lincoln Park">Original 14 towns</option><option value="2" title="Edgewater, Uptown, Lincoln Square, Ravenswood, Albany Park, Irving Park, Avondale, North Center, North Park, Logan Square">Preferred + adjacent (10)</option><option value="1" title="Edgewater, Uptown, Lincoln Square, Ravenswood, Albany Park">Preferred only: Edgewater, Uptown, Lincoln Square, Ravenswood, Albany Park</option></select></label>
   <label>Town <select id="town"><option value="">All towns</option><option>Albany Park</option><option>Austin</option><option>East Garfield Park</option><option>Edgewater</option><option>Humboldt Park</option><option>Jefferson Park</option><option>Lakeview</option><option>Lincoln Square</option><option>Little Village</option><option>North Lawndale</option><option>North Park</option><option>Pilsen</option><option>Portage Park</option><option>Rogers Park</option><option>South Loop</option><option>Uptown</option><option>West Garfield Park</option><option>West Ridge</option></select></label>
@@ -184,6 +193,7 @@ tr.det .detbody h4{font-size:16px;margin:16px 0 6px;padding-top:10px}
   <label class="chk" id="archwrap" hidden><input type="checkbox" id="showarch"> Show archived (<span id="narch">0</span>)</label>
   <button id="sendchoices" class="send" hidden>Email my choices</button>
   <span class="count" id="count"></span>
+  <button type="button" class="fdone" id="fdone">Done, show results</button>
 </div><p class="areanote" id="areanote" hidden></p></div></div>
 
 <section><div class="wrap">
@@ -294,6 +304,20 @@ function render() {
   $('#sendchoices').hidden = !(PINS.size || ARCH.size);
 }
 document.querySelectorAll('.filters select, .filters input').forEach(el => el.addEventListener('input', render));
+// Small screens: the filter row folds behind a toggle so it never covers the list.
+(() => {
+  const bar = document.querySelector('.filters'), tog = document.getElementById('ftoggle'), done = document.getElementById('fdone');
+  const dflt = el => Math.max(0, [...el.options].findIndex(o => o.defaultSelected));
+  const active = () => [...bar.querySelectorAll('select, input')].filter(el =>
+    el.type === 'checkbox' ? el.checked : el.tagName === 'SELECT' ? el.selectedIndex !== dflt(el) : el.value).length;
+  const label = () => { const n = active(); tog.textContent = n ? `Filters (${n})` : 'Filters'; };
+  const set = open => { bar.classList.toggle('open', open); tog.setAttribute('aria-expanded', String(open)); label(); };
+  tog.addEventListener('click', () => set(!bar.classList.contains('open')));
+  done.addEventListener('click', () => { set(false); document.getElementById('tbl').scrollIntoView({behavior: 'smooth', block: 'start'}); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && bar.classList.contains('open')) set(false); });
+  bar.addEventListener('input', label);
+  label();
+})();
 document.querySelectorAll('th button').forEach(b => b.addEventListener('click', () => { const k = b.dataset.sort; sortDir = sortKey === k ? -sortDir : 1; sortKey = k; render(); }));
 $('#rows').addEventListener('click', e => {
   const pin = e.target.closest('[data-pin]'), arch = e.target.closest('[data-arch]');
